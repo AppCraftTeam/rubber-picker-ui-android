@@ -11,13 +11,17 @@
         <attr name="defaultThumbRadius" format="dimension" />
         <attr name="normalTrackWidth" format="dimension" />
         <attr name="highlightTrackWidth" format="dimension" />
+        <attr name="thumbOutlineWidth" format="dimension" />
+        <attr name="thumbOutlineColor" format="color" />
         <attr name="normalTrackColor" format="color" />
         <attr name="highlightTrackColor" format="color"/>
         <attr name="highlightDefaultThumbOnTouchColor" format="color"/>
+        <attr name="defaultThumbInsideColor" format="color"/>
         <attr name="dampingRatio" format="float"/>
         <attr name="stiffness" format="float"/>
         <attr name="minValue" format="integer"/>
         <attr name="maxValue" format="integer"/>
+        <attr name="initialValue" format="integer"/>
     </declare-styleable>
 
     <declare-styleable name="RubberRangePicker">
@@ -27,12 +31,17 @@
         <attr name="defaultThumbRadius"/>
         <attr name="normalTrackWidth"/>
         <attr name="highlightTrackWidth"/>
+        <attr name="thumbOutlineWidth" />
+        <attr name="thumbOutlineColor" />
         <attr name="normalTrackColor"/>
         <attr name="highlightTrackColor"/>
         <attr name="highlightDefaultThumbOnTouchColor"/>
+        <attr name="defaultThumbInsideColor"/>
         <attr name="dampingRatio"/>
         <attr name="stiffness"/>
         <attr name="minValue"/>
         <attr name="maxValue"/>
+        <attr name="initialStartValue" format="integer"/>
+        <attr name="initialEndValue" format="integer"/>
     </declare-styleable>
 </resources>

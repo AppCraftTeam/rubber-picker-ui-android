@@ -1,20 +1,22 @@
 package pro.appcraft.lib.rubberpicker
-
+import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.drawable.Drawable
-import androidx.dynamicanimation.animation.FloatValueHolder
-import androidx.dynamicanimation.animation.SpringAnimation
-import androidx.dynamicanimation.animation.SpringForce
 import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
+import androidx.dynamicanimation.animation.FloatValueHolder
+import androidx.dynamicanimation.animation.SpringAnimation
+import androidx.dynamicanimation.animation.SpringForce
 import java.util.concurrent.ArrayBlockingQueue
 import kotlin.math.absoluteValue
+import kotlin.math.min
+import kotlin.math.roundToInt
 
 class RubberSeekBar : View {
     private val paint: Paint by lazy {
@@ -72,10 +74,13 @@ class RubberSeekBar : View {
     private var drawableThumbRadius: Float = 0.0f
     private var normalTrackWidth: Float = 0.0f
     private var highlightTrackWidth: Float = 0.0f
+    private var thumbOutlineWidth: Float = 0.0f
 
     private var normalTrackColor: Int = 0
     private var highlightTrackColor: Int = 0
+    private var thumbOutlineColor: Int = 0
     private var highlightThumbOnTouchColor: Int = 0
+    private var defaultThumbInsideColor: Int = 0
     private var dampingRatio: Float = 0f
     private var stiffness: Float = 0f
 
@@ -107,6 +112,7 @@ class RubberSeekBar : View {
         normalTrackColor = Color.GRAY
         highlightTrackColor = 0xFF38ACEC.toInt()
         highlightThumbOnTouchColor = 0xFF82CAFA.toInt()
+        defaultThumbInsideColor = Color.WHITE
         dampingRatio = SpringForce.DAMPING_RATIO_HIGH_BOUNCY
         stiffness = SpringForce.STIFFNESS_LOW
 
@@ -128,9 +134,15 @@ class RubberSeekBar : View {
                 R.styleable.RubberSeekBar_highlightTrackWidth,
                 context.convertDpToPx(4f).toInt()
             ).toFloat()
+            thumbOutlineWidth = typedArray.getDimensionPixelSize(
+                R.styleable.RubberRangePicker_thumbOutlineWidth,
+                context.convertDpToPx(4f).toInt()
+            ).toFloat()
             drawableThumb = typedArray.getDrawable(R.styleable.RubberSeekBar_thumbDrawable)
             normalTrackColor =
                 typedArray.getColor(R.styleable.RubberSeekBar_normalTrackColor, Color.GRAY)
+            thumbOutlineColor =
+                typedArray.getColor(R.styleable.RubberRangePicker_thumbOutlineColor, Color.GRAY)
             highlightTrackColor = typedArray.getColor(
                 R.styleable.RubberSeekBar_highlightTrackColor,
                 0xFF38ACEC.toInt()
@@ -139,6 +151,11 @@ class RubberSeekBar : View {
                 typedArray.getColor(
                     R.styleable.RubberSeekBar_highlightDefaultThumbOnTouchColor,
                     0xFF82CAFA.toInt()
+                )
+            defaultThumbInsideColor =
+                typedArray.getColor(
+                    R.styleable.RubberSeekBar_defaultThumbInsideColor,
+                    Color.WHITE
                 )
             dampingRatio =
                 typedArray.getFloat(
@@ -156,6 +173,9 @@ class RubberSeekBar : View {
                     2 -> ElasticBehavior.RIGID
                     else -> ElasticBehavior.CUBIC
                 }
+            }
+            if (typedArray.hasValue(R.styleable.RubberSeekBar_initialValue)) {
+                setCurrentValue(typedArray.getInt(R.styleable.RubberSeekBar_initialValue, minValue))
             }
             typedArray.recycle()
         }
@@ -196,7 +216,7 @@ class RubberSeekBar : View {
         } else {
             result = desiredSize
             if (specMode == MeasureSpec.AT_MOST) {
-                result = Math.min(result, specSize)
+                result = min(result, specSize)
             }
         }
 
@@ -206,7 +226,7 @@ class RubberSeekBar : View {
 
     override fun onDraw(canvas: Canvas?) {
         super.onDraw(canvas)
-        // Try to figure out a better way to overcome view clipping
+        // TODO - Try to figure out a better way to overcome view clipping
         // Workaround since Region.Op.REPLACE won't work in Android P & above.
         // Region.Op.REPLACE also doesn't work properly (at times) even in devices below Android P.
         (parent as? ViewGroup)?.clipChildren = false
@@ -226,15 +246,15 @@ class RubberSeekBar : View {
                 drawableThumb?.draw(it)
             }
         } else {
-            paint.color = highlightTrackColor
+            paint.color = thumbOutlineColor
             paint.style = Paint.Style.FILL
             canvas?.drawCircle(thumbX, thumbY, drawableThumbRadius, paint)
             if (drawableThumbSelected) {
                 paint.color = highlightThumbOnTouchColor
             } else {
-                paint.color = Color.WHITE
+                paint.color = defaultThumbInsideColor
             }
-            canvas?.drawCircle(thumbX, thumbY, drawableThumbRadius - highlightTrackWidth, paint)
+            canvas?.drawCircle(thumbX, thumbY, drawableThumbRadius - thumbOutlineWidth, paint)
             paint.style = Paint.Style.STROKE
         }
     }
@@ -300,6 +320,7 @@ class RubberSeekBar : View {
         canvas?.drawPath(path, paint)
     }
 
+    @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(event: MotionEvent?): Boolean {
         if (event == null) {
             return super.onTouchEvent(event)
@@ -418,6 +439,42 @@ class RubberSeekBar : View {
     }
 
     //region Public functions
+
+    //region Getter functions
+
+    fun getCurrentValue(): Int {
+        if (thumbX <= trackStartX) {
+            return minValue
+        } else if (thumbX >= trackEndX) {
+            return maxValue
+        }
+        return (((thumbX - trackStartX) / (trackEndX - trackStartX)) * (maxValue - minValue)).roundToInt() + minValue
+    }
+
+    fun getMin(): Int {
+        return minValue
+    }
+
+    fun getMax(): Int {
+        return maxValue
+    }
+
+    fun getElasticBehavior(): ElasticBehavior {
+        return elasticBehavior
+    }
+
+    fun getDampingRation(): Float {
+        return dampingRatio
+    }
+
+    fun getStiffness(): Float {
+        return stiffness
+    }
+
+    //endregion
+
+    //region Setter functions
+
     /**
      * Set the Elastic Behavior for the SeekBar.
      */
@@ -486,6 +543,11 @@ class RubberSeekBar : View {
         invalidate()
     }
 
+    fun setDefaultThumbInsideColor(value: Int) {
+        defaultThumbInsideColor = value
+        invalidate()
+    }
+
     @Throws(java.lang.IllegalArgumentException::class)
     fun setDampingRatio(value: Float) {
         if (value < 0.0f) {
@@ -536,19 +598,14 @@ class RubberSeekBar : View {
         }
     }
 
-    fun getCurrentValue(): Int {
-        if (thumbX <= trackStartX) {
-            return minValue
-        } else if (thumbX >= trackEndX) {
-            return maxValue
-        }
-        return Math.round(((thumbX - trackStartX) / (trackEndX - trackStartX)) * (maxValue - minValue)) + minValue
-    }
-
     fun setCurrentValue(value: Int) {
         val validValue = value.coerceAtLeast(minValue).coerceAtMost(maxValue)
         if (trackEndX < 0) {
             //If this function gets called before the view gets layed out and learns what it's width value is
+            if (initialControlXPositionQueue.isNotEmpty()) {
+                //Incase this is called multiple times, always use the latest value
+                initialControlXPositionQueue.clear()
+            }
             initialControlXPositionQueue.offer(validValue)
             return
         }
@@ -562,6 +619,10 @@ class RubberSeekBar : View {
         onChangeListener = listener
     }
     //endregion
+
+    //endregion
+
+    // TODO - Fill out the necessary comments and descriptions
 
     //region Interfaces
     /**
